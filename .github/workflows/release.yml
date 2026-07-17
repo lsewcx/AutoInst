@@ -1,0 +1,32 @@
+name: Build and release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Build autoinstall
+        run: |
+          g++ -std=c++17 -O2 -static -s cil.cpp -o autoinstall
+          chmod 755 autoinstall
+          ./autoinstall --help
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" ./autoinstall \
+            --verify-tag \
+            --generate-notes \
+            --title "AutoInst ${GITHUB_REF_NAME}"
