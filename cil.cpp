@@ -6,11 +6,31 @@
 #include <unordered_set>
 #include <functional>
 
+/**
+ * 判断工具是否在支持列表中。
+ *
+ * 参数：
+ *   supportedTools: 支持自动安装的工具集合。
+ *   toolName: 需要检查的工具名称。
+ *
+ * 返回：
+ *   工具受支持时返回 true，否则返回 false。
+ */
 bool isToolSupported(const std::unordered_set<std::string> &supportedTools, const std::string &toolName)
 {
     return supportedTools.find(toolName) != supportedTools.end();
 }
 
+/**
+ * 执行系统命令并处理失败信息。
+ *
+ * 参数：
+ *   command: 需要执行的系统命令。
+ *   errorMessage: 命令执行失败时显示的信息。
+ *
+ * 返回：
+ *   命令执行成功时返回 true，否则返回 false。
+ */
 bool runCommand(const std::string &command, const std::string &errorMessage)
 {
     int commandResult = std::system(command.c_str());
@@ -24,6 +44,12 @@ bool runCommand(const std::string &command, const std::string &errorMessage)
     return true;
 }
 
+/**
+ * 确保当前进程只执行一次 apt 软件源更新。
+ *
+ * 返回：
+ *   更新成功或已经更新时返回 true，否则返回 false。
+ */
 bool ensureAptUpdated()
 {
 #if defined(__linux__)
@@ -49,6 +75,15 @@ bool ensureAptUpdated()
 #endif
 }
 
+/**
+ * 确保指定的 apt 软件包已经安装。
+ *
+ * 参数：
+ *   packageName: 需要检查并安装的软件包或命令名称。
+ *
+ * 返回：
+ *   软件包可用时返回 true，否则返回 false。
+ */
 bool ensurePackageInstalled(const std::string &packageName)
 {
 #if defined(__linux__)
@@ -104,6 +139,16 @@ bool ensurePackageInstalled(const std::string &packageName)
 #endif
 }
 
+/**
+ * 安装指定工具所需的系统依赖。
+ *
+ * 参数：
+ *   toolDependencies: 工具名称与依赖列表的映射。
+ *   toolName: 需要安装依赖的工具名称。
+ *
+ * 返回：
+ *   所有依赖均可用时返回 true，否则返回 false。
+ */
 bool ensureToolDependenciesInstalled(const std::unordered_map<std::string, std::vector<std::string>> &toolDependencies, const std::string &toolName)
 {
     std::unordered_map<std::string, std::vector<std::string>>::const_iterator dependencyGroup = toolDependencies.find(toolName);
@@ -124,6 +169,9 @@ bool ensureToolDependenciesInstalled(const std::unordered_map<std::string, std::
     return true;
 }
 
+/**
+ * 下载并安装 ossutil。
+ */
 void installOssutil()
 {
 #if defined(__linux__)
@@ -176,6 +224,9 @@ void installOssutil()
 #endif
 }
 
+/**
+ * 下载并安装 Miniconda。
+ */
 void installMiniconda()
 {
 #if defined(__linux__)
@@ -216,6 +267,9 @@ void installMiniconda()
 #endif
 }
 
+/**
+ * 配置 Docker 软件源并安装 Docker。
+ */
 void installDocker()
 {
 #if defined(__linux__)
@@ -289,6 +343,9 @@ void installDocker()
 #endif
 }
 
+/**
+ * 下载并安装 tosutil。
+ */
 void installTosutil()
 {
 #if defined(__linux__)
@@ -333,17 +390,45 @@ void installTosutil()
 #endif
 }
 
+/**
+ * 打印命令行帮助信息。
+ */
+void printHelp()
+{
+    std::cout << "Usage:" << std::endl;
+    std::cout << "  autoinstall install <tool>" << std::endl;
+    std::cout << "  autoinstall --help" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Supported tools:" << std::endl;
+    std::cout << "  ossutil" << std::endl;
+    std::cout << "  miniconda" << std::endl;
+    std::cout << "  docker" << std::endl;
+    std::cout << "  tosutil" << std::endl;
+    std::cout << std::endl;
+    std::cout << "Example:" << std::endl;
+    std::cout << "  autoinstall install docker" << std::endl;
+}
+
+/**
+ * 安装指定工具及其依赖。
+ *
+ * 参数：
+ *   supportedTools: 支持自动安装的工具集合。
+ *   toolName: 需要安装的工具名称。
+ */
 void installTool(const std::unordered_set<std::string> &supportedTools, const std::string &toolName)
 {
     if (toolName.empty())
     {
         std::cout << "tool name is required" << std::endl;
+        printHelp();
         return;
     }
 
     if (!isToolSupported(supportedTools, toolName))
     {
         std::cout << "unsupported tool: " << toolName << std::endl;
+        printHelp();
         return;
     }
 
@@ -391,6 +476,16 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
     installer->second();
 }
 
+/**
+ * 解析命令行参数并执行对应操作。
+ *
+ * 参数：
+ *   argc: 命令行参数数量。
+ *   argv: 命令行参数数组。
+ *
+ * 返回：
+ *   命令执行成功时返回 0，命令格式错误时返回 1。
+ */
 int main(int argc, char *argv[])
 {
     std::string action;
@@ -407,6 +502,19 @@ int main(int argc, char *argv[])
         toolName = argv[2];
     }
 
+    if (action == "--help" && argc == 2)
+    {
+        printHelp();
+        return 0;
+    }
+
+    if (action == "install" && argc != 3)
+    {
+        std::cout << "invalid install command" << std::endl;
+        printHelp();
+        return 1;
+    }
+
     std::unordered_map<std::string, std::function<void()>> actionHandlers;
 
     actionHandlers["install"] = [&supportedTools, &toolName]()
@@ -418,7 +526,16 @@ int main(int argc, char *argv[])
 
     if (handler == actionHandlers.end())
     {
-        std::cout << "unsupported action: " << action << std::endl;
+        if (action.empty())
+        {
+            std::cout << "command is required" << std::endl;
+        }
+        else
+        {
+            std::cout << "unsupported action: " << action << std::endl;
+        }
+
+        printHelp();
         return 1;
     }
 
