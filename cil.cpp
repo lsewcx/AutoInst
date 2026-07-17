@@ -396,7 +396,7 @@ void installTosutil()
 void printHelp()
 {
     std::cout << "Usage:" << std::endl;
-    std::cout << "  autoinstall install <tool>" << std::endl;
+    std::cout << "  autoinstall install <tool|all>" << std::endl;
     std::cout << "  autoinstall --help" << std::endl;
     std::cout << std::endl;
     std::cout << "Supported tools:" << std::endl;
@@ -404,9 +404,11 @@ void printHelp()
     std::cout << "  miniconda" << std::endl;
     std::cout << "  docker" << std::endl;
     std::cout << "  tosutil" << std::endl;
+    std::cout << "  all (install all supported tools)" << std::endl;
     std::cout << std::endl;
-    std::cout << "Example:" << std::endl;
+    std::cout << "Examples:" << std::endl;
     std::cout << "  autoinstall install docker" << std::endl;
+    std::cout << "  autoinstall install all" << std::endl;
 }
 
 /**
@@ -477,6 +479,24 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
 }
 
 /**
+ * 按固定顺序安装所有受支持的工具。
+ *
+ * 参数：
+ *   supportedTools: 支持自动安装的工具集合。
+ */
+void installAllTools(const std::unordered_set<std::string> &supportedTools)
+{
+    std::vector<std::string> toolNames = {"ossutil", "miniconda", "docker", "tosutil"};
+
+    for (const std::string &toolName : toolNames)
+    {
+        std::cout << std::endl;
+        std::cout << "installing " << toolName << "..." << std::endl;
+        installTool(supportedTools, toolName);
+    }
+}
+
+/**
  * 解析命令行参数并执行对应操作。
  *
  * 参数：
@@ -519,6 +539,12 @@ int main(int argc, char *argv[])
 
     actionHandlers["install"] = [&supportedTools, &toolName]()
     {
+        if (toolName == "all")
+        {
+            installAllTools(supportedTools);
+            return;
+        }
+
         installTool(supportedTools, toolName);
     };
 
