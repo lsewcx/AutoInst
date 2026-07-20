@@ -399,6 +399,14 @@ void installPm2()
 }
 
 /**
+ * 使用 apt 安装 FFmpeg。
+ */
+void installFfmpeg()
+{
+    ensurePackageInstalled("ffmpeg");
+}
+
+/**
  * 配置 Docker 软件源并安装 Docker。
  */
 void installDocker()
@@ -536,6 +544,7 @@ void printHelp()
     std::cout << "  nvm" << std::endl;
     std::cout << "  node" << std::endl;
     std::cout << "  pm2" << std::endl;
+    std::cout << "  ffmpeg" << std::endl;
     std::cout << "  docker" << std::endl;
     std::cout << "  tosutil" << std::endl;
     std::cout << "  all (install all supported tools)" << std::endl;
@@ -543,6 +552,7 @@ void printHelp()
     std::cout << "Examples:" << std::endl;
     std::cout << "  autoinstall install node" << std::endl;
     std::cout << "  autoinstall install pm2" << std::endl;
+    std::cout << "  autoinstall install ffmpeg" << std::endl;
     std::cout << "  autoinstall install docker" << std::endl;
     std::cout << "  autoinstall install all" << std::endl;
 }
@@ -610,6 +620,11 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
         installPm2();
     };
 
+    toolInstallers["ffmpeg"] = []()
+    {
+        installFfmpeg();
+    };
+
     toolInstallers["docker"] = []()
     {
         installDocker();
@@ -639,7 +654,7 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
  */
 void installAllTools(const std::unordered_set<std::string> &supportedTools)
 {
-    std::vector<std::string> toolNames = {"ossutil", "miniconda", "nvm", "node", "pm2", "docker", "tosutil"};
+    std::vector<std::string> toolNames = {"ossutil", "miniconda", "nvm", "node", "pm2", "ffmpeg", "docker", "tosutil"};
 
     for (const std::string &toolName : toolNames)
     {
@@ -663,7 +678,7 @@ int main(int argc, char *argv[])
 {
     std::string action;
     std::string toolName;
-    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "nvm", "node", "pm2", "docker", "tosutil"};
+    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "nvm", "node", "pm2", "ffmpeg", "docker", "tosutil"};
 
     if (argc > 1)
     {
