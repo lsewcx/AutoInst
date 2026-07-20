@@ -268,16 +268,28 @@ void installMiniconda()
 }
 
 /**
+ * 构建在 Bash 中加载 nvm 的命令。
+ *
+ * 返回：
+ *   用于设置 NVM_DIR 并加载 nvm 的 shell 命令。
+ */
+std::string buildNvmLoadCommand()
+{
+    return "if [ -z \"${NVM_DIR-}\" ]; then "
+           "if [ -z \"${XDG_CONFIG_HOME-}\" ]; then NVM_DIR=\"${HOME}/.nvm\"; "
+           "else NVM_DIR=\"${XDG_CONFIG_HOME}/nvm\"; fi; fi; "
+           "export NVM_DIR; "
+           "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"";
+}
+
+/**
  * 下载并安装 nvm。
  */
 void installNvm()
 {
 #if defined(__linux__)
     std::string installCommand = "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.6/install.sh | bash";
-    std::string verifyCommand =
-        "bash -c 'export NVM_DIR=\"${NVM_DIR:-$HOME/.nvm}\"; "
-        "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\" && "
-        "command -v nvm >/dev/null 2>&1'";
+    std::string verifyCommand = "bash -c '" + buildNvmLoadCommand() + " && command -v nvm >/dev/null 2>&1'";
 
     std::cout << "Installing nvm..." << std::endl;
 
@@ -295,6 +307,47 @@ void installNvm()
     std::cout << "open a new shell to start using nvm" << std::endl;
 #else
     std::cout << "nvm install only supports Linux environments" << std::endl;
+#endif
+}
+
+/**
+ * 检查 nvm 并安装最新版 Node.js。
+ */
+void installNode()
+{
+#if defined(__linux__)
+    std::string loadNvmCommand = buildNvmLoadCommand();
+    std::string checkNvmCommand = "bash -c '" + loadNvmCommand + " && command -v nvm >/dev/null 2>&1'";
+    std::string installCommand = "bash -c '" + loadNvmCommand + " && nvm install node'";
+    std::string verifyCommand = "bash -c '" + loadNvmCommand + " && nvm use node >/dev/null && node --version >/dev/null 2>&1'";
+    int nvmCheckResult = std::system(checkNvmCommand.c_str());
+
+    std::cout << "Installing Node.js..." << std::endl;
+
+    if (nvmCheckResult != 0)
+    {
+        std::cout << "nvm not found, installing nvm..." << std::endl;
+        installNvm();
+
+        if (!runCommand(checkNvmCommand, "nvm is unavailable after installation"))
+        {
+            return;
+        }
+    }
+
+    if (!runCommand(installCommand, "failed to install Node.js with nvm"))
+    {
+        return;
+    }
+
+    if (!runCommand(verifyCommand, "Node.js install finished but node is unavailable"))
+    {
+        return;
+    }
+
+    std::cout << "Node.js installed successfully." << std::endl;
+#else
+    std::cout << "Node.js install only supports Linux environments" << std::endl;
 #endif
 }
 
@@ -434,11 +487,13 @@ void printHelp()
     std::cout << "  ossutil" << std::endl;
     std::cout << "  miniconda" << std::endl;
     std::cout << "  nvm" << std::endl;
+    std::cout << "  node" << std::endl;
     std::cout << "  docker" << std::endl;
     std::cout << "  tosutil" << std::endl;
     std::cout << "  all (install all supported tools)" << std::endl;
     std::cout << std::endl;
     std::cout << "Examples:" << std::endl;
+    std::cout << "  autoinstall install node" << std::endl;
     std::cout << "  autoinstall install docker" << std::endl;
     std::cout << "  autoinstall install all" << std::endl;
 }
@@ -470,6 +525,7 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
     toolDependencies["ossutil"] = {"curl", "unzip"};
     toolDependencies["miniconda"] = {"wget"};
     toolDependencies["nvm"] = {"curl"};
+    toolDependencies["node"] = {"curl"};
     toolDependencies["docker"] = {"curl", "gpg", "lsb_release"};
     toolDependencies["tosutil"] = {"wget"};
 
@@ -493,6 +549,11 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
     toolInstallers["nvm"] = []()
     {
         installNvm();
+    };
+
+    toolInstallers["node"] = []()
+    {
+        installNode();
     };
 
     toolInstallers["docker"] = []()
@@ -524,7 +585,7 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
  */
 void installAllTools(const std::unordered_set<std::string> &supportedTools)
 {
-    std::vector<std::string> toolNames = {"ossutil", "miniconda", "nvm", "docker", "tosutil"};
+    std::vector<std::string> toolNames = {"ossutil", "miniconda", "nvm", "node", "docker", "tosutil"};
 
     for (const std::string &toolName : toolNames)
     {
@@ -548,7 +609,7 @@ int main(int argc, char *argv[])
 {
     std::string action;
     std::string toolName;
-    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "nvm", "docker", "tosutil"};
+    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "nvm", "node", "docker", "tosutil"};
 
     if (argc > 1)
     {
