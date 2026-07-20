@@ -352,6 +352,53 @@ void installNode()
 }
 
 /**
+ * 检查 npm 并全局安装 PM2。
+ */
+void installPm2()
+{
+#if defined(__linux__)
+    std::string loadNpmCommand = "if ! command -v npm >/dev/null 2>&1; then " + buildNvmLoadCommand() + "; fi";
+    std::string checkNpmCommand = "bash -c '" + loadNpmCommand + " && command -v npm >/dev/null 2>&1'";
+    std::string installCommand = "bash -c '" + loadNpmCommand + " && npm install -g pm2'";
+    std::string verifyCommand = "bash -c '" + loadNpmCommand + " && command -v pm2 >/dev/null 2>&1 && pm2 --version >/dev/null 2>&1'";
+    int npmCheckResult = std::system(checkNpmCommand.c_str());
+
+    std::cout << "Installing PM2..." << std::endl;
+
+    if (npmCheckResult != 0)
+    {
+        std::cout << "npm not found, installing Node.js..." << std::endl;
+
+        if (!ensurePackageInstalled("curl"))
+        {
+            return;
+        }
+
+        installNode();
+
+        if (!runCommand(checkNpmCommand, "npm is unavailable after Node.js installation"))
+        {
+            return;
+        }
+    }
+
+    if (!runCommand(installCommand, "failed to install PM2 with npm"))
+    {
+        return;
+    }
+
+    if (!runCommand(verifyCommand, "PM2 install finished but pm2 is unavailable"))
+    {
+        return;
+    }
+
+    std::cout << "PM2 installed successfully." << std::endl;
+#else
+    std::cout << "PM2 install only supports Linux environments" << std::endl;
+#endif
+}
+
+/**
  * 配置 Docker 软件源并安装 Docker。
  */
 void installDocker()
@@ -488,12 +535,14 @@ void printHelp()
     std::cout << "  miniconda" << std::endl;
     std::cout << "  nvm" << std::endl;
     std::cout << "  node" << std::endl;
+    std::cout << "  pm2" << std::endl;
     std::cout << "  docker" << std::endl;
     std::cout << "  tosutil" << std::endl;
     std::cout << "  all (install all supported tools)" << std::endl;
     std::cout << std::endl;
     std::cout << "Examples:" << std::endl;
     std::cout << "  autoinstall install node" << std::endl;
+    std::cout << "  autoinstall install pm2" << std::endl;
     std::cout << "  autoinstall install docker" << std::endl;
     std::cout << "  autoinstall install all" << std::endl;
 }
@@ -556,6 +605,11 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
         installNode();
     };
 
+    toolInstallers["pm2"] = []()
+    {
+        installPm2();
+    };
+
     toolInstallers["docker"] = []()
     {
         installDocker();
@@ -585,7 +639,7 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
  */
 void installAllTools(const std::unordered_set<std::string> &supportedTools)
 {
-    std::vector<std::string> toolNames = {"ossutil", "miniconda", "nvm", "node", "docker", "tosutil"};
+    std::vector<std::string> toolNames = {"ossutil", "miniconda", "nvm", "node", "pm2", "docker", "tosutil"};
 
     for (const std::string &toolName : toolNames)
     {
@@ -609,7 +663,7 @@ int main(int argc, char *argv[])
 {
     std::string action;
     std::string toolName;
-    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "nvm", "node", "docker", "tosutil"};
+    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "nvm", "node", "pm2", "docker", "tosutil"};
 
     if (argc > 1)
     {
