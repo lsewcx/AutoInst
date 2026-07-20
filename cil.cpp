@@ -268,6 +268,37 @@ void installMiniconda()
 }
 
 /**
+ * 下载并安装 nvm。
+ */
+void installNvm()
+{
+#if defined(__linux__)
+    std::string installCommand = "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.6/install.sh | bash";
+    std::string verifyCommand =
+        "bash -c 'export NVM_DIR=\"${NVM_DIR:-$HOME/.nvm}\"; "
+        "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\" && "
+        "command -v nvm >/dev/null 2>&1'";
+
+    std::cout << "Installing nvm..." << std::endl;
+
+    if (!runCommand(installCommand, "failed to install nvm"))
+    {
+        return;
+    }
+
+    if (!runCommand(verifyCommand, "nvm install finished but nvm is unavailable"))
+    {
+        return;
+    }
+
+    std::cout << "nvm installed successfully." << std::endl;
+    std::cout << "open a new shell to start using nvm" << std::endl;
+#else
+    std::cout << "nvm install only supports Linux environments" << std::endl;
+#endif
+}
+
+/**
  * 配置 Docker 软件源并安装 Docker。
  */
 void installDocker()
@@ -402,6 +433,7 @@ void printHelp()
     std::cout << "Supported tools:" << std::endl;
     std::cout << "  ossutil" << std::endl;
     std::cout << "  miniconda" << std::endl;
+    std::cout << "  nvm" << std::endl;
     std::cout << "  docker" << std::endl;
     std::cout << "  tosutil" << std::endl;
     std::cout << "  all (install all supported tools)" << std::endl;
@@ -437,6 +469,7 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
     std::unordered_map<std::string, std::vector<std::string>> toolDependencies;
     toolDependencies["ossutil"] = {"curl", "unzip"};
     toolDependencies["miniconda"] = {"wget"};
+    toolDependencies["nvm"] = {"curl"};
     toolDependencies["docker"] = {"curl", "gpg", "lsb_release"};
     toolDependencies["tosutil"] = {"wget"};
 
@@ -455,6 +488,11 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
     toolInstallers["miniconda"] = []()
     {
         installMiniconda();
+    };
+
+    toolInstallers["nvm"] = []()
+    {
+        installNvm();
     };
 
     toolInstallers["docker"] = []()
@@ -486,7 +524,7 @@ void installTool(const std::unordered_set<std::string> &supportedTools, const st
  */
 void installAllTools(const std::unordered_set<std::string> &supportedTools)
 {
-    std::vector<std::string> toolNames = {"ossutil", "miniconda", "docker", "tosutil"};
+    std::vector<std::string> toolNames = {"ossutil", "miniconda", "nvm", "docker", "tosutil"};
 
     for (const std::string &toolName : toolNames)
     {
@@ -510,7 +548,7 @@ int main(int argc, char *argv[])
 {
     std::string action;
     std::string toolName;
-    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "docker", "tosutil"};
+    std::unordered_set<std::string> supportedTools = {"ossutil", "miniconda", "nvm", "docker", "tosutil"};
 
     if (argc > 1)
     {
