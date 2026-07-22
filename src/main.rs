@@ -336,6 +336,15 @@ impl Installer {
                 .or_else(|| env::var("USER").ok())
                 .unwrap_or_default();
 
+            if command_succeeds("command -v docker >/dev/null 2>&1") {
+                println!("Docker is already installed.");
+                return ensure_docker_service_running();
+            }
+
+            if !self.ensure_tool_dependencies_installed("docker") {
+                return false;
+            }
+
             println!("Installing Docker...");
             if !run_shell_steps(&[
                 (
@@ -355,6 +364,10 @@ impl Installer {
                     "failed to install Docker",
                 ),
             ]) {
+                return false;
+            }
+
+            if !ensure_docker_service_running() {
                 return false;
             }
 
@@ -445,7 +458,7 @@ impl Installer {
             return false;
         }
 
-        if !self.ensure_tool_dependencies_installed(tool_name) {
+        if tool_name != "docker" && !self.ensure_tool_dependencies_installed(tool_name) {
             return false;
         }
 
@@ -552,6 +565,33 @@ fn command_succeeds(command: &str) -> bool {
         .args(["-c", command])
         .status()
         .is_ok_and(|status| status.success())
+}
+
+/// 确保 Docker daemon 已启动并设置为随系统启动。
+///
+/// Returns:
+///     Docker daemon 可用时返回 `true`，否则返回 `false`。
+#[cfg(target_os = "linux")]
+fn ensure_docker_service_running() -> bool {
+    if command_succeeds("sudo docker info >/dev/null 2>&1") {
+        println!("Docker service is already running.");
+        return true;
+    }
+
+    println!("Docker service is not running, starting Docker...");
+    let start_command = "if command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ]; then \
+         sudo systemctl enable --now docker; \
+         elif command -v service >/dev/null 2>&1; then sudo service docker start; \
+         else exit 1; fi";
+
+    if !run_shell_command(start_command, "failed to start Docker service") {
+        return false;
+    }
+
+    run_shell_command(
+        "sudo docker info >/dev/null 2>&1",
+        "Docker service started but daemon is still unavailable",
+    )
 }
 
 /// 构建在 Bash 中加载 nvm 的命令。
