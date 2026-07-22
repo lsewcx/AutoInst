@@ -1,0 +1,15 @@
+[package]
+name = "autoinstall"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "auto_core"
+
+[[bin]]
+name = "autoinstall"
+path = "src/main.rs"
+test = false
+
+[profile.release]
+strip = true
